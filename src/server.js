@@ -1,3 +1,6 @@
+// loading lodash
+var _ = require('lodash');
+
 // loading express
 var express = require('express');
 var server = express();
@@ -42,7 +45,7 @@ apiHandler.use((req, res, next) => {
 
 apiHandler.get('/', (req, res, next) => {
 	console.log('api root called');
-	res.jsonp(database);
+	res.jsonp(_.filter(database, req.query));
 });
 
 apiHandler.all('*', (req, res) => {

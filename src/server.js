@@ -5,14 +5,19 @@ var server = express();
 // loading fileIO
 var fs = require('fs');
 
-// load database
+// load database -----------------------------------------------------------
 var database = {};
 fs.readFile('/data/items.json', (err, data) => {
 	if (err) console.log(err);
 	database = JSON.parse(data);
 });
 
-// Load hardFilter
+// let's keep watcher for items, just for curiosity
+fs.watchFile('/data/items.json', {interval: 500}, (curr, prev) => {
+	console.log(`${curr.mtime} : items changed! (maybe)`);
+});
+
+// Load hardFilter ---------------------------------------------------------
 var hardFilter = {};
 fs.readFile('/data/hiddenItems.json', (err, data) => {
 	if (err) console.log(err);
@@ -28,7 +33,7 @@ fs.watchFile('/data/hiddenItems.json', {interval: 500}, (curr, prev) => {
 	});
 });
 
-// handle API-calls
+// handle API-calls  -------------------------------------------------------
 var apiHandler = express.Router();
 apiHandler.use((req, res, next) => {
 	console.log('TODO: validate API-call');
@@ -37,8 +42,7 @@ apiHandler.use((req, res, next) => {
 
 apiHandler.get('/', (req, res, next) => {
 	console.log('api root called');
-	res.jsonp({this : 'dog', hardFilter: hardFilter});
-
+	res.jsonp(database);
 });
 
 apiHandler.all('*', (req, res) => {
@@ -48,7 +52,8 @@ apiHandler.all('*', (req, res) => {
 
 server.use('/api', apiHandler);
 
-// start server
+
+// start server  -----------------------------------------------------------
 server.listen(8080);
 
 

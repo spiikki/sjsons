@@ -8,24 +8,24 @@ var fs = require('fs');
 // load database
 var database = {};
 fs.readFile('/data/items.json', (err, data) => {
-	if (err) throw err;
+	if (err) console.log(err);
 	database = JSON.parse(data);
 });
 
-// follow filter-list and load on change
+// Load hardFilter
 var hardFilter = {};
 fs.readFile('/data/hiddenItems.json', (err, data) => {
-	if (err) throw err;
+	if (err) console.log(err);
 	hardFilter = JSON.parse(data);
 });
 
+// watch filter-file for changes and update it (500ms)
 fs.watchFile('/data/hiddenItems.json', {interval: 500}, (curr, prev) => {
 	console.log(`${curr.mtime} : hiddenItems changed! (maybe)`);
 	fs.readFile('/data/hiddenItems.json', (err, data) => {
-		if (err) throw err;
+		if (err) console.log(err);
 		hardFilter = JSON.parse(data);
 	});
-
 });
 
 // handle API-calls

@@ -15,10 +15,15 @@ server.use(bodyParser.urlencoded( {
 // loading fileIO
 var fs = require('fs');
 
+// announcing the stars
+var database = {};
+var hardFilter = {};
+
 // helper functions --------------------------------------------------------
 var saveDB = function() {
-	fs.writeFile('/data/items.json',JSON.stringify(database), (err) => {
+	fs.writeFileSync('/data/items.json',JSON.stringify(database), (err) => {
 		if(err) throw err;
+		return;
 	});
 };
 var loadDB = function() {
@@ -26,14 +31,21 @@ var loadDB = function() {
 		if (err) console.log(err);
 		database = JSON.parse(data);
 	});	
-}
+};
+var loadHardFilter = function() {
+	fs.readFile('/data/hiddenItems.json', (err, data) => {
+		if (err) console.log(err);
+		hardFilter = JSON.parse(data);
+		return hardFilter;
+	});	
+};
 
 // load database -----------------------------------------------------------
-var database = {};
 loadDB();
 
 // let's keep watcher for items, just for curiosity
 fs.watchFile('/data/items.json', {interval: 100}, (curr, prev) => {
+	// filesystem echoes often, only read when theres significant delay
 	if((curr.mtimeMs - prev.mtimeMs) < 100.0 ) {
 		console.log('loading db');
 		loadDB();
@@ -41,18 +53,11 @@ fs.watchFile('/data/items.json', {interval: 100}, (curr, prev) => {
 });
 
 // Load hardFilter ---------------------------------------------------------
-var hardFilter = {};
-fs.readFile('/data/hiddenItems.json', (err, data) => {
-	if (err) console.log(err);
-	hardFilter = JSON.parse(data);
-});
+hardFilter = loadHardFilter();
 
 // watch filter-file for changes and update it (500ms)
 fs.watchFile('/data/hiddenItems.json', {interval: 100}, (curr, prev) => {
-	fs.readFile('/data/hiddenItems.json', (err, data) => {
-		if (err) console.log(err);
-		hardFilter = JSON.parse(data);
-	});
+	hardFilter = loadHardFilter();
 });
 
 // handle API-calls  -------------------------------------------------------

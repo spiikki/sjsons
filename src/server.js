@@ -15,16 +15,29 @@ server.use(bodyParser.urlencoded( {
 // loading fileIO
 var fs = require('fs');
 
+// helper functions --------------------------------------------------------
+var saveDB = function() {
+	fs.writeFile('/data/items.json',JSON.stringify(database), (err) => {
+		if(err) throw err;
+	});
+};
+var loadDB = function() {
+	fs.readFile('/data/items.json', (err, data) => {
+		if (err) console.log(err);
+		database = JSON.parse(data);
+	});	
+}
+
 // load database -----------------------------------------------------------
 var database = {};
-fs.readFile('/data/items.json', (err, data) => {
-	if (err) console.log(err);
-	database = JSON.parse(data);
-});
+loadDB();
 
 // let's keep watcher for items, just for curiosity
-fs.watchFile('/data/items.json', {interval: 500}, (curr, prev) => {
-	console.log(`${curr.mtime} : items changed! (maybe)`);
+fs.watchFile('/data/items.json', {interval: 100}, (curr, prev) => {
+	if((curr.mtimeMs - prev.mtimeMs) < 100.0 ) {
+		console.log('loading db');
+		loadDB();
+	}
 });
 
 // Load hardFilter ---------------------------------------------------------
@@ -35,8 +48,7 @@ fs.readFile('/data/hiddenItems.json', (err, data) => {
 });
 
 // watch filter-file for changes and update it (500ms)
-fs.watchFile('/data/hiddenItems.json', {interval: 500}, (curr, prev) => {
-	console.log(`${curr.mtime} : hiddenItems changed! (maybe)`);
+fs.watchFile('/data/hiddenItems.json', {interval: 100}, (curr, prev) => {
 	fs.readFile('/data/hiddenItems.json', (err, data) => {
 		if (err) console.log(err);
 		hardFilter = JSON.parse(data);
@@ -64,8 +76,7 @@ apiHandler.post('/', (req, res, next) => {
 	console.log(req.body);
 	database.push(req.body);
 	res.status(202).jsonp(req.body); // 202 Accepted 
-
-	//TODO: save it!!
+	saveDB();
 });
 
 // delete item x(
@@ -78,8 +89,8 @@ apiHandler.delete('/', (req, res, next) => {
 	} else {
 		database.pop(req.body);
 		res.status(202).jsonp(req.body);
+		saveDB();
 	}
-	//TODO: save it!!
 });
 
 // atleast trying to respond politely

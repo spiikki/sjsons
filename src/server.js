@@ -1,9 +1,16 @@
 // loading lodash
 var _ = require('lodash');
+var bodyParser = require('body-parser');
 
 // loading express
 var express = require('express');
 var server = express();
+
+server.use(bodyParser.urlencoded( {
+	extended: true
+}));
+
+express.json();
 
 // loading fileIO
 var fs = require('fs');
@@ -43,11 +50,28 @@ apiHandler.use((req, res, next) => {
 	next();	
 });
 
+// let's handle queries
 apiHandler.get('/', (req, res, next) => {
 	console.log('api root called');
 	res.jsonp(_.filter(database, req.query));
 });
 
+// create new item!
+apiHandler.post('/', (req, res, next) => {
+	console.log("inserting data:");
+	console.log(req.body);
+	database.push(req.body)
+	res.jsonp({idea: "i might have.."});
+});
+
+// delete item x(
+apiHandler.delete('/', (req, res, next) => {
+	console.log("deleting data: ");
+	console.log(req.body);
+	res.jsonp({exterminate: "exterminate"});
+});
+
+// atleast trying to respond politely
 apiHandler.all('*', (req, res) => {
 	console.log('un-assigned call');
 	res.status(500).jsonp({error: 'don\'t go there'});

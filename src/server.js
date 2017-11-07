@@ -1,11 +1,13 @@
 // loading lodash
-var _ = require('lodash');
-// laoding body-parser
-var bodyParser = require('body-parser');
+const _ = require('lodash');
+// loading body-parser
+const bodyParser = require('body-parser');
+// loading async
+const async = require('async');
 
 // loading express
-var express = require('express');
-var server = express();
+const express = require('express');
+const server = express();
 
 // dig JSON data from POST/DELETE bodies
 server.use(bodyParser.urlencoded( {
@@ -13,26 +15,24 @@ server.use(bodyParser.urlencoded( {
 }));
 
 // loading fileIO
-var fs = require('fs');
+const fs = require('fs');
 
 // announcing the stars
-var database = {};
-var hardFilter = {};
+let database = {};
+let hardFilter = {};
 
 // helper functions --------------------------------------------------------
-var saveDB = function() {
-	fs.writeFileSync('/data/items.json',JSON.stringify(database), (err) => {
-		if(err) throw err;
-		return;
-	});
+function saveDB() {
+	fs.writeFileSync('/data/items.json',JSON.stringify(database));
 };
-var loadDB = function() {
+function loadDB() {
 	fs.readFile('/data/items.json', (err, data) => {
 		if (err) console.log(err);
 		database = JSON.parse(data);
+		return database;
 	});	
 };
-var loadHardFilter = function() {
+function loadHardFilter() {
 	fs.readFile('/data/hiddenItems.json', (err, data) => {
 		if (err) console.log(err);
 		hardFilter = JSON.parse(data);
@@ -40,20 +40,26 @@ var loadHardFilter = function() {
 	});	
 };
 
-// load database -----------------------------------------------------------
-loadDB();
+// load data ---------------------------------------------------------------
+async.parallel([
+	function(callback) {
+		database = loadDB();
+		callback(null);
+	},
+	function(callback) {
+		hardFilter = loadHardFilter();
+		callback(null);
+	}
+]);
 
 // let's keep watcher for items, just for curiosity
 fs.watchFile('/data/items.json', {interval: 100}, (curr, prev) => {
 	// filesystem echoes often, only read when theres significant delay
 	if((curr.mtimeMs - prev.mtimeMs) < 100.0 ) {
 		console.log('loading db');
-		loadDB();
+		database = loadDB();
 	}
 });
-
-// Load hardFilter ---------------------------------------------------------
-hardFilter = loadHardFilter();
 
 // watch filter-file for changes and update it (500ms)
 fs.watchFile('/data/hiddenItems.json', {interval: 100}, (curr, prev) => {
@@ -71,37 +77,38 @@ apiHandler.get('/', (req, res, next) => {
 		result = _.reject(result, { type: value } );
 	});
 
-	res.jsonp(_.filter(result, req.query));
+	return res.jsonp(_.filter(result, req.query));
 });
 
 // create new item!
 apiHandler.post('/', (req, res, next) => {
 	// work as logger, save all posts
-	console.log("inserting data:");
+	console.log('inserting data:');
 	console.log(req.body);
 	database.push(req.body);
 	res.status(202).jsonp(req.body); // 202 Accepted 
 	saveDB();
+	return true;
 });
 
 // delete item x(
 apiHandler.delete('/', (req, res, next) => {
-	console.log("deleting data: ");
-	console.log(req.body);
-
 	if( _.find(database, req.body) == undefined) {
-		res.status(404).jsonp({error: "not in the library"});
+		return res.status(404).jsonp({error: 'not in the library'});
 	} else {
+		console.log('deleting data: ');
+		console.log(req.body);
 		database.pop(req.body);
 		res.status(202).jsonp(req.body);
 		saveDB();
+		return true;
 	}
 });
 
 // atleast trying to respond politely
 apiHandler.all('*', (req, res) => {
 	console.log('un-assigned call');
-	res.status(500).jsonp({error: 'don\'t go there'});
+	return res.status(500).jsonp({error: 'don\'t go there'});
 });
 
 server.use('/api', apiHandler);

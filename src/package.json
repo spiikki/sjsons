@@ -1,0 +1,15 @@
+{
+	"name": "SimpleJSONDatabaseServer",
+	"version": "0.9.0",
+	"license": "UNLICENCED",
+	"private": "true",
+	"description": "Example server written for job interview to Coheros",
+	"main": "server.js",
+	"dependencies": {
+		"async": "^2.5.0",
+		"body-parser": "^1.18.2",
+		"express": "^4.16.2",
+		"fs": "0.0.1-security",
+		"lodash": "^4.17.4"
+	}
+}

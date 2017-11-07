@@ -20,22 +20,40 @@ const fs = require('fs');
 // announcing the stars
 let database = {};
 let hardFilter = {};
+let loadingDB = true;
+let loadingHardFilter = true;
+const DBSOURCE = '/data/items.json';
+const HARDFILTERSOURCE = '/data/hiddenItems.json';
 
 // helper functions --------------------------------------------------------
 function saveDB() {
-	fs.writeFileSync('/data/items.json',JSON.stringify(database));
+	fs.writeFileSync(DBSOURCE, JSON.stringify(database));
 };
 function loadDB() {
-	fs.readFile('/data/items.json', (err, data) => {
+	loadingDB = true;
+	fs.readFile(DBSOURCE, (err, data) => {
 		if (err) console.log(err);
-		database = JSON.parse(data);
+		try {
+			database = JSON.parse(data);
+			loadingDB = false;
+			console.log('database loaded')
+		} catch (e) {
+			console.log(e);
+		}
 		return database;
 	});	
 };
 function loadHardFilter() {
-	fs.readFile('/data/hiddenItems.json', (err, data) => {
+	loadingHardFilter = true;
+	fs.readFile(HARDFILTERSOURCE, (err, data) => {
 		if (err) console.log(err);
-		hardFilter = JSON.parse(data);
+		try {
+			hardFilter = JSON.parse(data);
+			loadingHardFilter = false;
+			console.log('hardFilter loaded')
+		} catch (e) {
+			console.log(e);
+		}
 		return hardFilter;
 	});	
 };
@@ -53,7 +71,7 @@ async.parallel([
 ]);
 
 // let's keep watch for items
-fs.watchFile('/data/items.json', {interval: 100}, (curr, prev) => {
+fs.watchFile(DBSOURCE, {interval: 100}, (curr, prev) => {
 	// filesystem echoes when saving, only read when theres significant delay
 	if((curr.mtimeMs - prev.mtimeMs) < 100.0 ) {
 		console.log('loading db');
@@ -62,14 +80,21 @@ fs.watchFile('/data/items.json', {interval: 100}, (curr, prev) => {
 });
 
 // watch filter-file for changes and update it (500ms)
-fs.watchFile('/data/hiddenItems.json', {interval: 100}, (curr, prev) => {
+fs.watchFile(HARDFILTERSOURCE, {interval: 100}, (curr, prev) => {
 	hardFilter = loadHardFilter();
 });
 
 // handle API-calls  -------------------------------------------------------
 const apiHandler = express.Router();
 
-// let's handle queries
+// check if still loading data-files
+apiHandler.use((req,res,next) => {
+	if(loadingDB) return res.status(503).jsonp({status:'loading data file'});
+	if(loadingHardFilter) return res.status(503).jsonp({status:'loading filter file'});
+	next();
+});
+
+// let's handle queries 
 apiHandler.get('/', (req, res, next) => {
 	let result = database;
 

@@ -52,9 +52,9 @@ async.parallel([
 	}
 ]);
 
-// let's keep watcher for items, just for curiosity
+// let's keep watch for items
 fs.watchFile('/data/items.json', {interval: 100}, (curr, prev) => {
-	// filesystem echoes often, only read when theres significant delay
+	// filesystem echoes when saving, only read when theres significant delay
 	if((curr.mtimeMs - prev.mtimeMs) < 100.0 ) {
 		console.log('loading db');
 		database = loadDB();

@@ -35,11 +35,11 @@ function loadDB() {
 		if (err) console.log(err);
 		try {
 			database = JSON.parse(data);
-			loadingDB = false;
 			console.log('database loaded')
 		} catch (e) {
 			console.log(e);
 		}
+		loadingDB = false;
 		return database;
 	});	
 };
@@ -49,11 +49,11 @@ function loadHardFilter() {
 		if (err) console.log(err);
 		try {
 			hardFilter = JSON.parse(data);
-			loadingHardFilter = false;
 			console.log('hardFilter loaded')
 		} catch (e) {
 			console.log(e);
 		}
+		loadingHardFilter = false;
 		return hardFilter;
 	});	
 };

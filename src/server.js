@@ -67,11 +67,11 @@ fs.watchFile('/data/hiddenItems.json', {interval: 100}, (curr, prev) => {
 });
 
 // handle API-calls  -------------------------------------------------------
-var apiHandler = express.Router();
+const apiHandler = express.Router();
 
 // let's handle queries
 apiHandler.get('/', (req, res, next) => {
-	var result = database;
+	let result = database;
 
 	_.each(hardFilter, (value, key) => {
 		result = _.reject(result, { type: value } );

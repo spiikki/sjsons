@@ -5,13 +5,12 @@ services:
     ports:
      - "8080:8080"
     volumes:
-     - data:/data
+     - ./data:/data
   sjsons2:
     build: .
     ports:
      - "8082:8080"
     volumes:
-     - data:/data
+     - ./data:/data
 volumes:
-  src:
   data: 

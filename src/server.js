@@ -4,130 +4,97 @@ const _ = require('lodash');
 const bodyParser = require('body-parser');
 // loading async
 const async = require('async');
+// loading mongodb 
+const db = require('mongodb').MongoClient;
+const mongo = require('mongodb');  
 
 // loading express
 const express = require('express');
 const server = express();
 
 // dig JSON data from POST/DELETE bodies
-server.use(bodyParser.urlencoded( {
+server.use(bodyParser.json( {
 	extended: true
 }));
 
-// loading fileIO
-const fs = require('fs');
-
 // announcing the stars
-let database = {};
-let hardFilter = {};
-let loadingDB = true;
-let loadingHardFilter = true;
-const DBSOURCE = '/data/items.json';
-const HARDFILTERSOURCE = '/data/hiddenItems.json';
-
-// helper functions --------------------------------------------------------
-function saveDB() {
-	fs.writeFileSync(DBSOURCE, JSON.stringify(database));
-};
-function loadDB() {
-	loadingDB = true;
-	fs.readFile(DBSOURCE, (err, data) => {
-		if (err) console.log(err);
-		try {
-			database = JSON.parse(data);
-			console.log('database loaded')
-		} catch (e) {
-			console.log(e);
-		}
-		loadingDB = false;
-		return database;
-	});	
-};
-function loadHardFilter() {
-	loadingHardFilter = true;
-	fs.readFile(HARDFILTERSOURCE, (err, data) => {
-		if (err) console.log(err);
-		try {
-			hardFilter = JSON.parse(data);
-			console.log('hardFilter loaded')
-		} catch (e) {
-			console.log(e);
-		}
-		loadingHardFilter = false;
-		return hardFilter;
-	});	
-};
-
-// load data ---------------------------------------------------------------
-async.parallel([
-	function(callback) {
-		database = loadDB();
-		callback(null);
-	},
-	function(callback) {
-		hardFilter = loadHardFilter();
-		callback(null);
-	}
-]);
-
-// let's keep watch for items
-fs.watchFile(DBSOURCE, {interval: 100}, (curr, prev) => {
-	// filesystem echoes when saving, only read when theres significant delay
-	if((curr.mtimeMs - prev.mtimeMs) < 100.0 ) {
-		console.log('loading db');
-		database = loadDB();
-	}
-});
-
-// watch filter-file for changes and update it (500ms)
-fs.watchFile(HARDFILTERSOURCE, {interval: 100}, (curr, prev) => {
-	hardFilter = loadHardFilter();
-});
+let database = "mydb";
+let url = "mongodb://localhost:27017";
 
 // handle API-calls  -------------------------------------------------------
 const apiHandler = express.Router();
 
-// check if still loading data-files
+// check if still loading anything
 apiHandler.use((req,res,next) => {
-	if(loadingDB) return res.status(503).jsonp({status:'loading data file'});
-	if(loadingHardFilter) return res.status(503).jsonp({status:'loading filter file'});
 	next();
 });
 
-// let's handle queries 
-apiHandler.get('/', (req, res, next) => {
-	let result = database;
-
-	_.each(hardFilter, (value, key) => {
-		result = _.reject(result, { type: value } );
-	});
-
-	return res.jsonp(_.filter(result, req.query));
+// let's handle queries
+apiHandler.get('/', (req, res, next) => { 
+        // make query to database and reply result                                                
+        console.log("get all");                                                                   
+        db.connect(url, (err, client) => {
+                if(err) res.status(500).jsonp(err);
+                const kanta = client.db(database);
+                const dokki = kanta.collection('wizard');
+                dokki.find({}).toArray((err, entries) => {
+                        if(err) res.status(500).jsonp(err);
+                        res.status(200).jsonp(entries);
+                });
+                client.close();
+        });
 });
+
+apiHandler.get('/user/:uid', (req, res, next) => {
+        // make query to database and reply result
+        console.log("get byUserId " + req.params.uid);
+        db.connect(url, (err, client) => {
+                if(err) res.status(500).jsonp(err);
+                const kanta = client.db(database);
+                const dokki = kanta.collection('wizard');
+                dokki.find({userId : req.params.uid}).toArray((err, entries) => {
+                        if(err) res.status(500).jsonp(err);
+                        res.status(200).jsonp(entries);
+                });
+                client.close();
+        });
+});
+
+apiHandler.get('/session/:id', (req, res, next) => {
+        // make query to database and reply result
+        console.log("get bySessionId " + req.params.id);
+        db.connect(url, (err, client) => {
+                if(err) res.status(500).jsonp(err);
+                const kanta = client.db(database);
+                const dokki = kanta.collection('wizard');
+                let oid = new mongo.ObjectId(req.params.id);
+                dokki.find({_id : oid}).toArray((err, entries) => {
+                        if(err) res.status(500).jsonp(err);
+                        res.status(200).jsonp(entries);
+                });
+                client.close();
+        });
+});
+
 
 // create new item!
 apiHandler.post('/', (req, res, next) => {
-	// work as logger, save all posts
-	console.log('inserting data:');
-	console.log(req.body);
-	database.push(req.body);
-	res.status(202).jsonp(req.body); // 202 Accepted 
-	saveDB();
-	return true;
-});
+        // work as logger, save all posts
+        console.log('inserting data:');
+        console.log(req.body);
+        // insert document to database
+        db.connect(url, (err, client) => {
+                if(err) res.status(500).jsonp(err);
+                const kanta = client.db(database);
+                const dokki = kanta.collection('wizard');
+                let id = {};
 
-// delete item x(
-apiHandler.delete('/', (req, res, next) => {
-	if( _.find(database, req.body) == undefined) {
-		return res.status(404).jsonp({error: 'not in the library'});
-	} else {
-		console.log('deleting data: ');
-		console.log(req.body);
-		database.pop(req.body);
-		res.status(202).jsonp(req.body);
-		saveDB();
-		return true;
-	}
+                id = dokki.insertOne(req.body, (err, entry, test) => {
+                        if(err) res.status(500).jsonp(err);
+                        client.close();
+                        return res.status(200).jsonp({ id : entry.insertedId });
+                });
+        });
 });
 
 // atleast trying to respond politely
@@ -136,7 +103,7 @@ apiHandler.all('*', (req, res) => {
 	return res.status(500).jsonp({error: 'don\'t go there'});
 });
 
-server.use('/api', apiHandler);
+server.use('/', apiHandler);
 
 // start server  -----------------------------------------------------------
 server.listen(8080);
